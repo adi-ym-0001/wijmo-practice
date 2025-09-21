@@ -1,200 +1,140 @@
-import * as wijmo from '@mescius/wijmo';
-import { CollectionView } from '@mescius/wijmo';
-import '@mescius/wijmo.cultures/wijmo.culture.ja';
-import * as wjGrid from '@mescius/wijmo.grid';
-import * as wjcGrid from '@mescius/wijmo.react.grid';
-import '@mescius/wijmo.styles/wijmo.css';
-import React, { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
-import { fetchData, fetchHeaderDefinition } from '../mocks/mockApi';
-import '../styles/wijmo.css';
+// Wijmoのデータ管理とグリッド表示に必要なモジュールをインポート
+import { CollectionView } from "@mescius/wijmo";
+import * as wjcGrid from "@mescius/wijmo.react.grid";
+import "@mescius/wijmo.styles/wijmo.css";
 
-type CellError = {
+// Reactの基本フックとSonnerによるトースト通知
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+
+// 分割されたロジック・UIコンポーネント・ユーティリティのインポート
+import { useGridErrorEffects } from "../hooks/useGridErrorEffects"; // 背景色とツールチップの副作用
+import { handleScroll } from "../hooks/useGridScroll"; // スクロール時のデータ追加
+import { fetchData } from "../mocks/mockApi"; // モックデータ取得
+import { validateGrid } from "../utils/validateGrid"; // 入力チェック
+import { ErrorPanel } from "./ErrorPanel"; // エラー一覧パネル
+import { generateColumns } from "./GridColumns"; // 列定義生成
+
+// エラー情報の型定義
+export type CellError = {
   row: number;
   col: number;
   message: string;
 };
 
-const MAX_RECORDS = 10000;
-const PAGE_SIZE = 40;
+const PAGE_SIZE = 40; // 1ページあたりのデータ件数
 
 export const Grid = () => {
-  const [dataView, setDataView] = useState<CollectionView | undefined>(undefined);
+  // グリッド表示用のデータビュー
+  const [dataView, setDataView] = useState<CollectionView>();
+
+  // 入力エラー一覧
   const [errors, setErrors] = useState<CellError[]>([]);
-  const [open, setOpen] = useState(false);
+
+  // エラー一覧パネルの表示状態
+  const [showErrorPanel, setShowErrorPanel] = useState(false);
+
+  // Wijmoグリッドの参照
   const gridRef = useRef<any>(null);
+
+  // データの保持（スクロール追加用）
   const dataRef = useRef<any[]>([]);
-  const layout = fetchHeaderDefinition();
 
-const handleSave = () => {
-  const newErrors = validate();
-  setErrors(newErrors);
-
-  if (newErrors.length > 0) {
-    toast.error(`保存失敗：${newErrors.length}件の入力エラーがあります`, {
-      description: 'セルを確認してください',
-      duration: 5000,
-    });
-  } else {
-    toast.success('保存完了', {
-      description: 'すべてのデータが正常です',
-      duration: 3000,
-    });
-  }
-};
-
-
-  const generateColumns = () => {
-    const cols: React.ReactElement[] = [];
-    for (const group of layout) {
-      for (const cell of group.cells) {
-        if (cell.binding) {
-          cols.push(
-            <wjcGrid.FlexGridColumn
-              key={cell.binding}
-              binding={cell.binding}
-              header={cell.header}
-              align={cell.align ?? 'left'}
-              allowSorting={false}
-            />
-          );
-        }
-      }
-    }
-    return cols;
-  };
-
+  // 初期データの読み込み（初回のみ）
   useEffect(() => {
     const initialData = fetchData(0, PAGE_SIZE);
     dataRef.current = initialData;
-    const view = new CollectionView(dataRef.current, {
-      groupDescriptions: ['category'],
+
+    const view = new CollectionView(initialData, {
+      groupDescriptions: ["category"], // カテゴリでグループ化
     });
+
     setDataView(view);
   }, []);
 
-  useEffect(() => {
-  const grid = gridRef.current?.control;
-  if (!grid) return;
+  // セルの背景色とツールチップ表示の副作用を適用
+  useGridErrorEffects(gridRef, errors);
 
-  grid.formatItem.addHandler((s, e) => {
-    if (e.panel === s.cells) {
-      const err = errors.find((er) => er.row === e.row && er.col === e.col);
-      if (err) {
-        e.cell.style.backgroundColor = '#ffe4e1'; // ピンク背景
-      } else {
-        e.cell.style.backgroundColor = ''; // 通常状態に戻す
-      }
-    }
-  });
-
-  const tip = new wijmo.Tooltip();
-  let rng: wijmo.grid.CellRange | null = null;
-
-  const mouseMoveHandler = (e: MouseEvent) => {
-    const ht = grid.hitTest(e.pageX, e.pageY);
-    if (!rng || !ht.range.equals(rng)) {
-      if (ht.cellType === wjGrid.CellType.Cell) {
-        const err = errors.find((er) => er.row === ht.row && er.col === ht.col);
-        if (err) {
-          rng = ht.range;
-          const cellElement = document.elementFromPoint(e.clientX, e.clientY);
-          const cellBounds = grid.getCellBoundingRect(ht.row, ht.col);
-          const data = wijmo.escapeHtml(err.message);
-
-          // 安全に表示するためのチェック
-          if (cellElement && cellElement.className.indexOf('wj-cell') > -1) {
-            tip.show(grid.hostElement, data, cellBounds);
-          }
-        } else {
-          tip.hide();
-          rng = null;
-        }
-      } else {
-        tip.hide();
-        rng = null;
-      }
-    }
-  };
-
-  const mouseOutHandler = () => {
-    tip.hide();
-    rng = null;
-  };
-
-  grid.hostElement.addEventListener('mousemove', mouseMoveHandler);
-  grid.hostElement.addEventListener('mouseout', mouseOutHandler);
-
-  return () => {
-    grid.hostElement.removeEventListener('mousemove', mouseMoveHandler);
-    grid.hostElement.removeEventListener('mouseout', mouseOutHandler);
-    tip.dispose();
-  };
-}, [errors]);
-
-  const validate = (): CellError[] => {
+  // 保存ボタン押下時の処理
+  const handleSave = () => {
     const grid = gridRef.current?.control;
     const view = grid?.itemsSource as CollectionView;
-    const errs: CellError[] = [];
 
-    view.items.forEach((item, row) => {
-      if (!item.product) errs.push({ row, col: 1, message: '商品名が未入力です' });
-      if (item.sales < 100) errs.push({ row, col: 5, message: '売上が低すぎます' });
-      if (item.rating === 'D') errs.push({ row, col: 7, message: '評価が低すぎます' });
-    });
+    // 入力チェックを実行
+    const newErrors = validateGrid(view);
+    setErrors(newErrors);
 
-    return errs;
-  };
-
-  const handleScroll = (grid: any) => {
-    const bottomRow = grid.viewRange?.bottomRow ?? 0;
-    const totalRows = grid.rows.length;
-
-    if (bottomRow >= totalRows - 1 && dataRef.current.length < MAX_RECORDS) {
-      const more = fetchData(dataRef.current.length, PAGE_SIZE);
-      dataRef.current.push(...more);
-
-      const updatedView = new CollectionView(dataRef.current, {
-        groupDescriptions: ['category'],
+    if (newErrors.length > 0) {
+      // エラーあり → トースト通知＋パネル表示ボタン
+      toast.error(`保存失敗：${newErrors.length}件の入力エラー`, {
+        description: "セルを確認してください",
+        action: {
+          label: "詳細を見る",
+          onClick: () => setShowErrorPanel(true),
+        },
+        duration: 8000,
       });
-      setDataView(updatedView);
+    } else {
+      // エラーなし → 成功通知
+      toast.success("保存完了", {
+        description: "すべてのデータが正常です",
+        duration: 3000,
+      });
+      setShowErrorPanel(false);
     }
   };
 
+  // エラー一覧から該当セルにジャンプする処理
   const jumpToCell = (row: number, col: number) => {
     const grid = gridRef.current?.control;
     if (grid) {
-      grid.select(row, col);
-      grid.scrollIntoView(row, col);
+      // 遅延実行で描画後にジャンプ（仮想スクロール対策）
+      setTimeout(() => {
+        grid.scrollIntoView(row, col); // スクロールして表示
+        grid.select(row, col);         // セル選択
+        grid.focus();                  // フォーカスを当てる
+      }, 0);
     }
   };
 
   return (
-      <div className="p-4">
-        <h1 className="text-xl font-bold mb-4">商品一覧</h1>
+    <div className="p-4">
+      {/* タイトル */}
+      <h1 className="text-xl font-bold mb-4">商品一覧</h1>
 
-        <wjcGrid.FlexGrid
-          ref={gridRef}
-          itemsSource={dataView}
-          scrollPositionChanged={(grid) => handleScroll(grid)}
-          headersVisibility="Column"
-          allowMerging="ColumnHeaders"
-          showGroups={true}
-          allowSorting={false}
+      {/* Wijmoグリッド本体 */}
+      <wjcGrid.FlexGrid
+        ref={gridRef}
+        itemsSource={dataView}
+        scrollPositionChanged={(grid) =>
+          handleScroll(grid, dataRef, setDataView)
+        }
+        headersVisibility="Column"
+        allowMerging="ColumnHeaders"
+        showGroups={true}
+        allowSorting={false}
+      >
+        {generateColumns()}
+      </wjcGrid.FlexGrid>
+
+      {/* 保存ボタン */}
+      <div className="mt-4 flex gap-4 items-center">
+        <button
+          onClick={handleSave}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
         >
-          {generateColumns()}
-        </wjcGrid.FlexGrid>
-
-        <div className="mt-4 flex gap-4 items-center">
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-blue-600 text-white rounded"
-          >
-            保存
-          </button>
-
-          
-        </div>
+          保存
+        </button>
       </div>
+
+      {/* エラー一覧パネル（右下） */}
+      {showErrorPanel && errors.length > 0 && (
+        <ErrorPanel
+          errors={errors}
+          onJump={jumpToCell}
+          onClose={() => setShowErrorPanel(false)}
+        />
+      )}
+    </div>
   );
 };
