@@ -1,0 +1,54 @@
+.search-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.header-group {
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 8px;
+}
+
+.group-label {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.columns-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.column-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+}
+
+.column-block label {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.tooltip {
+  position: fixed; /* ← absolute だとスクロールに弱い */
+  background: #333;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 9999;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+}
+
+.tooltip.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
