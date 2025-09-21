@@ -6,6 +6,7 @@ export function App() {
     <>
       <Grid />
       <Toaster richColors position="top-right" />
+      <Toaster position="bottom-right" />
     </>
   );
 }

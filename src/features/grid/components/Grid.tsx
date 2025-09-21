@@ -12,8 +12,8 @@ import { useGridErrorEffects } from "../hooks/useGridErrorEffects"; // 背景色
 import { handleScroll } from "../hooks/useGridScroll"; // スクロール時のデータ追加
 import { fetchData } from "../mocks/mockApi"; // モックデータ取得
 import { validateGrid } from "../utils/validateGrid"; // 入力チェック
-import { ErrorPanel } from "./ErrorPanel"; // エラー一覧パネル
 import { generateColumns } from "./GridColumns"; // 列定義生成
+import { showErrorToast } from "./showErrorToast";
 
 // エラー情報の型定義
 export type CellError = {
@@ -57,32 +57,20 @@ export const Grid = () => {
 
   // 保存ボタン押下時の処理
   const handleSave = () => {
-    const grid = gridRef.current?.control;
-    const view = grid?.itemsSource as CollectionView;
+  const grid = gridRef.current?.control;
+  const view = grid?.itemsSource as CollectionView;
+  const newErrors = validateGrid(view);
+  setErrors(newErrors);
 
-    // 入力チェックを実行
-    const newErrors = validateGrid(view);
-    setErrors(newErrors);
-
-    if (newErrors.length > 0) {
-      // エラーあり → トースト通知＋パネル表示ボタン
-      toast.error(`保存失敗：${newErrors.length}件の入力エラー`, {
-        description: "セルを確認してください",
-        action: {
-          label: "詳細を見る",
-          onClick: () => setShowErrorPanel(true),
-        },
-        duration: 8000,
-      });
-    } else {
-      // エラーなし → 成功通知
-      toast.success("保存完了", {
-        description: "すべてのデータが正常です",
-        duration: 3000,
-      });
-      setShowErrorPanel(false);
-    }
-  };
+  if (newErrors.length > 0) {
+    showErrorToast(newErrors, jumpToCell); // ← 改良版を呼び出す
+  } else {
+    toast.success("保存完了", {
+      description: "すべてのデータが正常です",
+      duration: 3000,
+    });
+  }
+};
 
   // エラー一覧から該当セルにジャンプする処理
   const jumpToCell = (row: number, col: number) => {
@@ -128,13 +116,13 @@ export const Grid = () => {
       </div>
 
       {/* エラー一覧パネル（右下） */}
-      {showErrorPanel && errors.length > 0 && (
+      {/* {showErrorPanel && errors.length > 0 && (
         <ErrorPanel
           errors={errors}
           onJump={jumpToCell}
           onClose={() => setShowErrorPanel(false)}
         />
-      )}
+      )} */}
     </div>
   );
 };
