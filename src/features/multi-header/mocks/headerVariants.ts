@@ -75,15 +75,15 @@ export function getFundColumns() {
             {
               header: 'Short Term',
               columns: [
-                { header: '1 M', binding: 'perf.m1', format: 'p2', width: '*' },
-                { header: '6 M', binding: 'perf.m6', format: 'p2', width: '*' },
+                { header: '1 M', binding: 'perf_m1', format: 'p2', width: '*', role: 'performance' },
+                { header: '6 M', binding: 'perf_m6', format: 'p2', width: '*', role: 'performance' },
               ],
             },
             {
               header: 'Long Term',
               columns: [
-                { header: 'YTD', binding: 'perf.ytd', format: 'p2', width: '*' },
-                { header: '12 M', binding: 'perf.m12', format: 'p2', width: '*' },
+                { header: 'YTD', binding: 'perf_ytd', format: 'p2', width: '*', role: 'performance' },
+                { header: '12 M', binding: 'perf_m12', format: 'p2', width: '*', role: 'performance' },
               ],
             },
           ],
@@ -96,21 +96,16 @@ export function getFundColumns() {
         {
           header: 'Asset Class',
           columns: [
-            { header: 'Stocks', binding: 'alloc.stock', format: 'p0', width: '*' },
-            { header: 'Bonds', binding: 'alloc.bond', format: 'p0', width: '*' },
-            { header: 'Cash', binding: 'alloc.cash', format: 'p0', width: '*' },
-            { header: 'Other', binding: 'alloc.other', format: 'p0', width: '*' },
-            { header: 'Real Estate', binding: 'alloc.realEstate', format: 'p0', width: '*' },
+            { header: 'Stocks', binding: 'alloc_stock', format: 'p0', width: '*', role: 'allocation' },
+            { header: 'Bonds', binding: 'alloc_bond', format: 'p0', width: '*', role: 'allocation' },
+            { header: 'Cash', binding: 'alloc_cash', format: 'p0', width: '*', role: 'allocation' },
+            { header: 'Other', binding: 'alloc_other', format: 'p0', width: '*', role: 'allocation' },
+            { header: 'Real Estate', binding: 'alloc_realEstate', format: 'p0', width: '*', role: 'allocation' },
           ],
         },
       ],
     },
-    {
-      header: 'Note',
-      binding: 'note',
-      dataType: 'String',
-      width: '*',
-    },
+    { header: 'Note', binding: 'note', dataType: 'String', width: '*', role: 'meta' },
     {
       header: 'Setup Date',
       binding: 'setupDate',
@@ -134,3 +129,4 @@ export function getFundColumns() {
     },
   ];
 }
+
