@@ -32,7 +32,7 @@ export function App() {
 
     {/* エラーメッセージ表示グリッド */}
     {showGrid && (
-      <div>
+      <div className="h-[100%]">
         <Grid />
         <Toaster richColors position="top-right" />
         <Toaster position="bottom-right" />
@@ -40,11 +40,12 @@ export function App() {
     )}
     {/* 階層付きヘッダーグリッド */}
     {showMaltHeader && (
-      <div>
+      <div style={{ height: '100vh', margin: 0 }}>
         <HierarchicalGrid
-          gridId="FinancialGrid"
+          gridId="fundGrid"
           columnGroups={getFundColumns()}
           itemsSource={getFundData()}
+          groupBy={['region']} // ← グループ化キーを指定
         />
       </div>
     )}

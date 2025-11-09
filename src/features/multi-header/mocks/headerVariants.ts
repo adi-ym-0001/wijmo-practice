@@ -3,6 +3,8 @@ export function getFundData() {
     {
       name: 'Aventium',
       currency: 'USD',
+      fundType: '株式型',
+      region: '北米',
       perf: { ytd: 0.0523, m1: 0.0142, m6: 0.0443, m12: 0.0743 },
       alloc: { stock: 0.17, bond: 0.32, cash: 0.36, other: 0.15, realEstate: 0.05 },
       note: '安定運用',
@@ -13,6 +15,8 @@ export function getFundData() {
     {
       name: 'Brillion',
       currency: 'EUR',
+      fundType: '債券型',
+      region: '欧州',
       perf: { ytd: 0.0343, m1: 0.043, m6: 0.0244, m12: 0.0543 },
       alloc: { stock: 0.61, bond: 0.8, cash: 0.9, other: 0.22, realEstate: 0.1 },
       note: '高リスク',
@@ -23,6 +27,8 @@ export function getFundData() {
     {
       name: 'Cortollix',
       currency: 'YEN',
+      fundType: 'バランス型',
+      region: 'アジア',
       perf: { ytd: 0.0522, m1: 0.0143, m6: 0.0458, m12: 0.0732 },
       alloc: { stock: 0.66, bond: 0.09, cash: 0.19, other: 0.06, realEstate: 0.2 },
       note: '分散投資',
@@ -30,8 +36,22 @@ export function getFundData() {
       amount: 780000,
       achievement: 0.92,
     },
+    // グループを分けるために追加
+    {
+      name: 'Zenith',
+      currency: 'USD',
+      fundType: '株式型',
+      region: '北米',
+      perf: { ytd: 0.045, m1: 0.02, m6: 0.03, m12: 0.06 },
+      alloc: { stock: 0.5, bond: 0.2, cash: 0.2, other: 0.05, realEstate: 0.05 },
+      note: '成長重視',
+      setupDate: new Date(2021, 2, 5),
+      amount: 1500000,
+      achievement: 0.95,
+    },
   ];
 }
+
 
 
 export function getFundColumns() {
