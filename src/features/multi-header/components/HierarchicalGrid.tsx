@@ -1,11 +1,14 @@
 import { Button } from "@/components/ui/button";
 import * as wijmo from "@mescius/wijmo";
+import { hidePopup, showPopup } from "@mescius/wijmo";
 import * as wjGrid from "@mescius/wijmo.grid";
 import * as wjFilter from "@mescius/wijmo.grid.filter";
 import * as wjSearch from "@mescius/wijmo.grid.search";
+import * as wjInput from "@mescius/wijmo.input";
 import "@mescius/wijmo.styles/wijmo.css";
 import type React from "react";
 import { useEffect, useRef } from "react";
+import { mergeColumnGroups } from "../utils/mergeColumnGroups";
 
 export interface FundRecord {
   name: string;
@@ -68,42 +71,75 @@ export const HierarchicalGrid: React.FC<Props> = ({
   const gridRef = useRef<wjGrid.FlexGrid | null>(null);
   const filterRef = useRef<wjFilter.FlexGridFilter | null>(null);
   const searchBoxRef = useRef<HTMLInputElement | null>(null);
+  const columnPickerRef = useRef<wjInput.ListBox | null>(null);
+  const columnPickerHostRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-  const timeout = setTimeout(() => {
-    const gridHost = document.getElementById(gridId);
-    if (!gridHost) return;
+    const timeout = setTimeout(() => {
+      const gridHost = document.getElementById(gridId);
+      if (!gridHost) return;
 
-    const existingGrid = wijmo.Control.getControl(gridHost);
-    if (existingGrid) existingGrid.dispose();
+      const existingGrid = wijmo.Control.getControl(gridHost);
+      if (existingGrid) existingGrid.dispose();
 
-    const grid = new wjGrid.FlexGrid(gridHost);
-    gridRef.current = grid;
-    grid.autoGenerateColumns = false;
+      const grid = new wjGrid.FlexGrid(gridHost);
+      gridRef.current = grid;
+      grid.autoGenerateColumns = false;
 
-    bindColumnGroups(grid, columnGroups);
+      bindColumnGroups(grid, columnGroups);
 
-    const flattenedItems = flattenFundData(itemsSource);
-    const view = new wijmo.CollectionView(flattenedItems, {
-      groupDescriptions: groupBy ?? [],
-    });
-
-    grid.itemsSource = view;
-    filterRef.current = new wjFilter.FlexGridFilter(grid);
-
-    if (searchBoxRef.current) {
-      const existingSearch = wijmo.Control.getControl(searchBoxRef.current);
-      if (existingSearch) existingSearch.dispose();
-      new wjSearch.FlexGridSearch(searchBoxRef.current, {
-        grid,
-        placeholder: "グローバル検索",
+      const flattenedItems = flattenFundData(itemsSource);
+      const view = new wijmo.CollectionView(flattenedItems, {
+        groupDescriptions: groupBy ?? [],
       });
-    }
-  }, 0);
 
-  return () => clearTimeout(timeout);
-}, [gridId, columnGroups, itemsSource, groupBy]);
+      grid.itemsSource = view;
+      filterRef.current = new wjFilter.FlexGridFilter(grid);
 
+      if (searchBoxRef.current) {
+        const existingSearch = wijmo.Control.getControl(searchBoxRef.current);
+        if (existingSearch) existingSearch.dispose();
+        new wjSearch.FlexGridSearch(searchBoxRef.current, {
+          grid,
+          placeholder: "グローバル検索",
+        });
+      }
+
+      // 列ピッカー初期化
+      if (columnPickerHostRef.current) {
+        columnPickerRef.current = new wjInput.ListBox(columnPickerHostRef.current, {
+          itemsSource: grid.columns,
+          checkedMemberPath: "visible",
+          displayMemberPath: "header",
+          lostFocus: () => hidePopup(columnPickerHostRef.current!),
+        });
+      }
+
+      // 左上セルにギアアイコンを追加
+      grid.formatItem.addHandler((s, e) => {
+        if (e.panel === s.topLeftCells) {
+          e.cell.innerHTML = '<span class="column-picker-icon" style="cursor:pointer;">⚙️</span>';
+        }
+      });
+
+      // ギアアイコンクリックで列ピッカー表示
+      grid.hostElement.addEventListener("mousedown", (e) => {
+        if ((e.target as HTMLElement).classList.contains("column-picker-icon")) {
+          const host = columnPickerHostRef.current!;
+          if (!host.offsetHeight) {
+            showPopup(host, grid.hostElement, false, true, false);
+            columnPickerRef.current?.focus();
+          } else {
+            hidePopup(host, true, true);
+            grid.focus();
+          }
+          e.preventDefault();
+        }
+      });
+    }, 0);
+
+    return () => clearTimeout(timeout);
+  }, [gridId, columnGroups, itemsSource, groupBy]);
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
@@ -116,8 +152,20 @@ export const HierarchicalGrid: React.FC<Props> = ({
         />
         <Button onClick={() => filterRef.current?.clear()}>フィルタをリセット</Button>
       </div>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, position: "relative" }}>
         <div id={gridId} className="wj-flexgrid" style={{ height: "100%", width: "100%" }} />
+        <div
+          ref={columnPickerHostRef}
+          style={{
+            display: "none",
+            position: "absolute",
+            zIndex: 1000,
+            background: "#fff",
+            border: "1px solid #ccc",
+            padding: "8px",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+          }}
+        />
       </div>
     </div>
   );
@@ -193,34 +241,8 @@ function createColumnGroups(
       const colIndex = flex.columns.length;
       createColumnGroups(flex, group.columns, level + 1);
       for (let j = colIndex; j < flex.columns.length; j++) {
-        colHdrs.setCellData(level, j, group.header);
-      }
+              colHdrs.setCellData(level, j, group.header);
     }
   }
 }
-
-function mergeColumnGroups(flex: wjGrid.FlexGrid) {
-  const colHdrs = flex.columnHeaders;
-  flex.allowMerging = wjGrid.AllowMerging.ColumnHeaders;
-
-  colHdrs.rows.forEach((row) => {
-    row.allowMerging = true;
-  });
-  flex.columns.forEach((col) => {
-    col.allowMerging = true;
-  });
-
-  for (let c = 0; c < flex.columns.length; c++) {
-    for (let r = 1; r < colHdrs.rows.length; r++) {
-      const hdr = colHdrs.getCellData(r, c, false);
-      if (!hdr || hdr === flex.columns[c].binding) {
-        const above = colHdrs.getCellData(r - 1, c, false);
-        colHdrs.setCellData(r, c, above);
-      }
-    }
-  }
-
-  for (let c = 0; c < flex.topLeftCells.columns.length; c++) {
-    flex.topLeftCells.columns[c].allowMerging = true;
-  }
 }
